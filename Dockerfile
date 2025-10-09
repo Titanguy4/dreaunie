@@ -1,15 +1,22 @@
-# Dockerfile optimisé pour Dokploy sans nginx - Multi-stage build
+# Dockerfile optimisé pour Dokploy - Basé sur le portfolio qui fonctionne
 
 # Stage 1: Build
-FROM node:18-alpine AS builder
+FROM node:22.16.0-alpine AS builder
 
 WORKDIR /app
 
-# Copier les fichiers de dépendances
-COPY package.json ./
+# Variables d'environnement pour le build (si nécessaire)
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 
-# Installer toutes les dépendances (y compris dev pour le build)
-RUN npm ci --silent
+# Timestamp du build
+RUN echo "Build at $(date)" > /tmp/buildtime
+
+# Copier les fichiers de dépendances avec package-lock.json
+COPY package.json package-lock.json ./
+
+# Installer les dépendances avec lockfile figé
+RUN npm ci --frozen-lockfile
 
 # Copier tout le code source
 COPY . .
@@ -18,14 +25,14 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production
-FROM node:18-alpine
+FROM node:22.16.0-alpine AS production
 
-# Installer serve globalement pour servir les fichiers statiques
-RUN npm install -g serve
+# Installer serve avec version spécifique
+RUN npm install -g serve@14
 
 # Créer un utilisateur non-root pour la sécurité
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S appuser -u 1001
+    adduser -S reactuser -u 1001
 
 WORKDIR /app
 
@@ -33,13 +40,13 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 
 # Changer les permissions pour l'utilisateur non-root
-RUN chown -R appuser:nodejs /app
+RUN chown -R reactuser:nodejs /app
 
 # Utiliser l'utilisateur non-root
-USER appuser
+USER reactuser
 
 # Exposer le port 3434
 EXPOSE 3434
 
 # Commande pour servir l'application avec serve
-CMD ["serve", "-s", "dist", "-l", "3434"]
+CMD ["serve", "-s", "dist", "-l", "3434", "--no-clipboard"]
