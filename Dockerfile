@@ -37,7 +37,7 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /app
 
 # Copier seulement les fichiers construits depuis le stage builder
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/build ./build
 
 # Changer les permissions pour l'utilisateur non-root
 RUN chown -R reactuser:nodejs /app
@@ -49,4 +49,4 @@ USER reactuser
 EXPOSE 3434
 
 # Commande pour servir l'application avec serve
-CMD ["serve", "-s", "dist", "-l", "3434", "--no-clipboard"]
+CMD ["serve", "-s", "build", "-l", "3434", "--no-clipboard"]
